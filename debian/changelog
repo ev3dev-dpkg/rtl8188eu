@@ -1,0 +1,6 @@
+rtl8188eu (0) stable; urgency=low
+
+  * Initial Release.
+  * Built from upstream git commit: fcc9034b0d2170b4942133a43a9521aab2e0beac
+
+ -- David Lechner <david@lechnology.com>  Tue, 25 Mar 2014 23:26:06 -0500
