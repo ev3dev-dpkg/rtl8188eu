@@ -1,3 +1,9 @@
+rtl8188eu (1) testing; urgency=medium
+
+  * merge upstream for building against 3.13+ kernel 
+
+ -- David Lechner <david@lechnology.com>  Wed, 20 Aug 2014 21:01:45 -0500
+
 rtl8188eu (0) stable; urgency=low
 
   * Initial Release.
