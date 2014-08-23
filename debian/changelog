@@ -1,6 +1,7 @@
 rtl8188eu (2) testing; urgency=medium
 
-  * Fix error when installing multiple packages
+  * Change to depend on realtek-firmware package since it has the exact same
+    firmware file.
 
  -- David Lechner <david@lechnology.com>  Fri, 22 Aug 2014 19:26:54 -0500
 
