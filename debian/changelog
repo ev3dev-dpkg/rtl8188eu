@@ -1,3 +1,9 @@
+rtl8188eu (3) testing; urgency=medium
+
+  * Correct package name to firmware-realtek 
+
+ -- David Lechner <david@lechnology.com>  Sat, 23 Aug 2014 17:03:10 -0500
+
 rtl8188eu (2) testing; urgency=medium
 
   * Change to depend on realtek-firmware package since it has the exact same
