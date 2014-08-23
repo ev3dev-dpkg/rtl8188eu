@@ -1,3 +1,9 @@
+rtl8188eu (2) testing; urgency=medium
+
+  * Fix error when installing multiple packages
+
+ -- David Lechner <david@lechnology.com>  Fri, 22 Aug 2014 19:26:54 -0500
+
 rtl8188eu (1) testing; urgency=medium
 
   * merge upstream for building against 3.13+ kernel 
