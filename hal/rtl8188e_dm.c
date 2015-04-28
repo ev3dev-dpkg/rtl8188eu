@@ -57,7 +57,7 @@ static void Init_ODM_ComInfo_88E(struct adapter *Adapter)
 	u8 cut_ver, fab_ver;
 
 	/*  Init Value */
-	_rtw_memset(dm_odm, 0, sizeof(*dm_odm));
+	memset(dm_odm, 0, sizeof(*dm_odm));
 
 	dm_odm->Adapter = Adapter;
 
@@ -80,7 +80,6 @@ static void Init_ODM_ComInfo_88E(struct adapter *Adapter)
 
 	ODM_CmnInfoInit(dm_odm, ODM_CMNINFO_PATCH_ID, hal_data->CustomerID);
 	ODM_CmnInfoInit(dm_odm, ODM_CMNINFO_BWIFI_TEST, Adapter->registrypriv.wifi_spec);
-
 
 	if (hal_data->rf_type == RF_1T1R)
 		ODM_CmnInfoUpdate(dm_odm, ODM_CMNINFO_RF_TYPE, ODM_1T1R);
@@ -165,7 +164,7 @@ void rtl8188e_HalDmWatchDog(struct adapter *Adapter)
 	u8 hw_init_completed = false;
 	struct hal_data_8188e *hal_data = GET_HAL_DATA(Adapter);
 
-	_func_enter_;
+	
 	hw_init_completed = Adapter->hw_init_completed;
 
 	if (!hw_init_completed)
@@ -183,7 +182,7 @@ void rtl8188e_HalDmWatchDog(struct adapter *Adapter)
 		/*  Calculate Tx/Rx statistics. */
 		dm_CheckStatistics(Adapter);
 
-	_func_exit_;
+	
 	}
 
 	/* ODM */
@@ -215,7 +214,7 @@ void rtl8188e_init_dm_priv(struct adapter *Adapter)
 	struct dm_priv	*pdmpriv = &hal_data->dmpriv;
 	struct odm_dm_struct *podmpriv = &hal_data->odmpriv;
 
-	_rtw_memset(pdmpriv, 0, sizeof(struct dm_priv));
+	memset(pdmpriv, 0, sizeof(struct dm_priv));
 	Init_ODM_ComInfo_88E(Adapter);
 	ODM_InitDebugSetting(podmpriv);
 }

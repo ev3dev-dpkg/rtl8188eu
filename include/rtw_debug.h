@@ -23,7 +23,6 @@
 #include <osdep_service.h>
 #include <drv_types.h>
 
-
 #define _drv_always_			1
 #define _drv_emerg_			2
 #define _drv_alert_			3
@@ -33,7 +32,6 @@
 #define _drv_notice_			7
 #define _drv_info_			8
 #define	_drv_debug_			9
-
 
 #define _module_rtl871x_xmit_c_		BIT(0)
 #define _module_xmit_osdep_c_		BIT(1)
@@ -97,20 +95,6 @@ extern u32 GlobalDebugLevel;
 				 (unsigned int)_comp, _level);		\
 			pr_info fmt;					\
 		}							\
-	} while (0)
-
-#define _func_enter_							\
-	do {								\
-		if (GlobalDebugLevel >= _drv_debug_)			\
-			pr_info("%s : %s enters at %d\n",		\
-				 DRIVER_PREFIX, __func__, __LINE__);	\
-	} while (0)
-
-#define _func_exit_							\
-	do {								\
-		if (GlobalDebugLevel >= _drv_debug_)			\
-			pr_info("%s : %s exits at %d\n",		\
-				 DRIVER_PREFIX, __func__, __LINE__);	\
 	} while (0)
 
 #define RT_PRINT_DATA(_comp, _level, _titlestring, _hexdata, _hexdatalen)\

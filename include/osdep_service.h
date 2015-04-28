@@ -65,49 +65,9 @@ struct	__queue	{
 
 #define thread_exit() complete_and_exit(NULL, 0)
 
-static inline struct list_head *get_next(struct list_head *list)
-{
-	return list->next;
-}
-
 static inline struct list_head *get_list_head(struct __queue *queue)
 {
 	return (&(queue->queue));
-}
-
-
-#define LIST_CONTAINOR(ptr, type, member) \
-        ((type *)((char *)(ptr)-(size_t)(&((type *)0)->member)))
-
-
-static inline void _enter_critical(spinlock_t *plock, unsigned long *pirqL)
-{
-	spin_lock_irqsave(plock, *pirqL);
-}
-
-static inline void _exit_critical(spinlock_t *plock, unsigned long *pirqL)
-{
-	spin_unlock_irqrestore(plock, *pirqL);
-}
-
-static inline void _enter_critical_ex(spinlock_t *plock, unsigned long *pirqL)
-{
-	spin_lock_irqsave(plock, *pirqL);
-}
-
-static inline void _exit_critical_ex(spinlock_t *plock, unsigned long *pirqL)
-{
-	spin_unlock_irqrestore(plock, *pirqL);
-}
-
-static inline void _enter_critical_bh(spinlock_t *plock, unsigned long *pirqL)
-{
-	spin_lock_bh(plock);
-}
-
-static inline void _exit_critical_bh(spinlock_t *plock, unsigned long *pirqL)
-{
-	spin_unlock_bh(plock);
 }
 
 static inline int _enter_critical_mutex(struct mutex *pmutex, unsigned long *pirqL)
@@ -117,7 +77,6 @@ static inline int _enter_critical_mutex(struct mutex *pmutex, unsigned long *pir
 	ret = mutex_lock_interruptible(pmutex);
 	return ret;
 }
-
 
 static inline void _exit_critical_mutex(struct mutex *pmutex, unsigned long *pirqL)
 {
@@ -291,30 +250,13 @@ void _rtw_mfree(u8 *pbuf, u32 sz);
 void *rtw_malloc2d(int h, int w, int size);
 void rtw_mfree2d(void *pbuf, int h, int w, int size);
 
-void _rtw_memcpy(void *dec, void *sour, u32 sz);
-int  _rtw_memcmp(void *dst, void *src, u32 sz);
-void _rtw_memset(void *pbuf, int c, u32 sz);
-
-void _rtw_init_listhead(struct list_head *list);
-u32  rtw_is_list_empty(struct list_head *phead);
-void rtw_list_insert_head(struct list_head *plist, struct list_head *phead);
-void rtw_list_insert_tail(struct list_head *plist, struct list_head *phead);
-void rtw_list_delete(struct list_head *plist);
-
-void _rtw_init_sema(struct semaphore *sema, int init_val);
-void _rtw_free_sema(struct semaphore *sema);
-void _rtw_up_sema(struct semaphore *sema);
 u32  _rtw_down_sema(struct semaphore *sema);
 void _rtw_mutex_init(struct mutex *pmutex);
 void _rtw_mutex_free(struct mutex *pmutex);
-void _rtw_spinlock_init(spinlock_t *plock);
 void _rtw_spinlock_free(spinlock_t *plock);
 
 void _rtw_init_queue(struct __queue *pqueue);
-u32  _rtw_queue_empty(struct __queue *pqueue);
-u32  rtw_end_of_queue_search(struct list_head *queue, struct list_head *pelement);
 
-u32  rtw_get_current_time(void);
 u32  rtw_systime_to_ms(u32 systime);
 u32  rtw_ms_to_systime(u32 ms);
 s32  rtw_get_passing_time_ms(u32 start);
@@ -465,7 +407,6 @@ u64 rtw_division64(u64 x, u64 y);
 		(a)[1] = ((u16) (val)) & 0xff;	\
 	} while (0)
 
-#define RTW_GET_LE16(a) ((u16) (((a)[1] << 8) | (a)[0]))
 #define RTW_PUT_LE16(a, val)			\
 	do {					\
 		(a)[1] = ((u16) (val)) >> 8;	\

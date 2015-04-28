@@ -23,7 +23,6 @@
 #include <osdep_service.h>
 #include <drv_types.h>
 
-
 #ifndef OID_802_11_CAPABILITY
 	#define OID_802_11_CAPABILITY	0x0d010122
 #endif
@@ -31,7 +30,6 @@
 #ifndef OID_802_11_PMKID
 	#define OID_802_11_PMKID	0x0d010123
 #endif
-
 
 /*  For DDK-defined OIDs */
 #define OID_NDIS_SEG1	0x00010100
@@ -102,8 +100,6 @@ struct oid_obj_priv {
 
 #if defined(_RTW_MP_IOCTL_C_)
 static int oid_null_function(struct oid_par_priv *poid_par_priv) {
-	_func_enter_;
-	_func_exit_;
 	return NDIS_STATUS_SUCCESS;
 }
 #endif

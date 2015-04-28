@@ -97,7 +97,7 @@ static void _init_mp_priv_(struct mp_priv *pmp_priv)
 {
 	struct wlan_bssid_ex *pnetwork;
 
-	_rtw_memset(pmp_priv, 0, sizeof(struct mp_priv));
+	memset(pmp_priv, 0, sizeof(struct mp_priv));
 
 	pmp_priv->mode = MP_OFF;
 
@@ -138,12 +138,12 @@ static void mp_init_xmit_attrib(struct mp_tx *pmptx, struct adapter *padapter)
 
 	/*  init xmitframe attribute */
 	pattrib = &pmptx->attrib;
-	_rtw_memset(pattrib, 0, sizeof(struct pkt_attrib));
+	memset(pattrib, 0, sizeof(struct pkt_attrib));
 	desc = &pmptx->desc;
-	_rtw_memset(desc, 0, TXDESC_SIZE);
+	memset(desc, 0, TXDESC_SIZE);
 
 	pattrib->ether_type = 0x8712;
-	_rtw_memset(pattrib->dst, 0xFF, ETH_ALEN);
+	memset(pattrib->dst, 0xFF, ETH_ALEN);
 	pattrib->ack_policy = 0;
 	pattrib->hdrlen = WLAN_HDR_A3_LEN;
 	pattrib->subtype = WIFI_DATA;
@@ -323,10 +323,7 @@ s32 mp_start_test(struct adapter *padapter)
 	struct sta_info *psta;
 	u32 length;
 	u8 val8;
-
-	unsigned long irqL;
 	s32 res = _SUCCESS;
-
 	struct mp_priv *pmppriv = &padapter->mppriv;
 	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
 	struct wlan_network *tgt_network = &pmlmepriv->cur_network;
@@ -365,7 +362,7 @@ s32 mp_start_test(struct adapter *padapter)
 	mpt_ProStartTest(padapter);
 
 	/* 3 1. initialize a new struct wlan_bssid_ex */
-/*	_rtw_memset(&bssid, 0, sizeof(struct wlan_bssid_ex)); */
+/*	memset(&bssid, 0, sizeof(struct wlan_bssid_ex)); */
 	memcpy(bssid.MacAddress, pmppriv->network_macaddr, ETH_ALEN);
 	bssid.Ssid.SsidLength = strlen("mp_pseudo_adhoc");
 	memcpy(bssid.Ssid.Ssid, (u8 *)"mp_pseudo_adhoc", bssid.Ssid.SsidLength);
@@ -379,7 +376,7 @@ s32 mp_start_test(struct adapter *padapter)
 	else
 		bssid.Length = length;
 
-	_enter_critical_bh(&pmlmepriv->lock, &irqL);
+	spin_lock_bh(&pmlmepriv->lock);
 
 	if (check_fwstate(pmlmepriv, WIFI_MP_STATE) == true)
 		goto end_of_mp_start_test;
@@ -420,7 +417,7 @@ s32 mp_start_test(struct adapter *padapter)
 
 end_of_mp_start_test:
 
-	_exit_critical_bh(&pmlmepriv->lock, &irqL);
+	spin_unlock_bh(&pmlmepriv->lock);
 
 	if (res == _SUCCESS) {
 		/*  set MSR to WIFI_FW_ADHOC_STATE */
@@ -439,11 +436,9 @@ void mp_stop_test(struct adapter *padapter)
 	struct wlan_network *tgt_network = &pmlmepriv->cur_network;
 	struct sta_info *psta;
 
-	unsigned long irqL;
-
 	if (pmppriv->mode == MP_ON) {
 		pmppriv->bSetTxPower = 0;
-		_enter_critical_bh(&pmlmepriv->lock, &irqL);
+		spin_lock_bh(&pmlmepriv->lock);
 		if (check_fwstate(pmlmepriv, WIFI_MP_STATE) == false)
 			goto end_of_mp_stop_test;
 
@@ -459,13 +454,13 @@ void mp_stop_test(struct adapter *padapter)
 		pmlmepriv->fw_state = pmppriv->prev_fw_state; /*  WIFI_STATION_STATE; */
 
 		/* flush the cur_network */
-		_rtw_memset(tgt_network, 0, sizeof(struct wlan_network));
+		memset(tgt_network, 0, sizeof(struct wlan_network));
 
 		_clr_fwstate_(pmlmepriv, WIFI_MP_STATE);
 
 end_of_mp_stop_test:
 
-		_exit_critical_bh(&pmlmepriv->lock, &irqL);
+		spin_unlock_bh(&pmlmepriv->lock);
 	}
 }
 
@@ -548,7 +543,6 @@ void SetContinuousTx(struct adapter *pAdapter, u8 bStart)
 	PhySetTxPowerLevel(pAdapter);
 	Hal_SetContinuousTx(pAdapter, bStart);
 }
-
 
 void PhySetTxPowerLevel(struct adapter *pAdapter)
 {
@@ -663,7 +657,6 @@ void SetPacketTx(struct adapter *padapter)
 	struct pkt_attrib *pattrib;
 	struct mp_priv *pmp_priv;
 
-
 	pmp_priv = &padapter->mppriv;
 	if (pmp_priv->tx.stop)
 		return;
@@ -702,7 +695,7 @@ void SetPacketTx(struct adapter *padapter)
 	ptr = pmp_priv->tx.buf;
 
 	desc = &(pmp_priv->tx.desc);
-	_rtw_memset(desc, 0, TXDESC_SIZE);
+	memset(desc, 0, TXDESC_SIZE);
 	pkt_start = ptr;
 	pkt_end = pkt_start + pkt_size;
 
@@ -775,7 +768,7 @@ void SetPacketTx(struct adapter *padapter)
 		break;
 	}
 
-	_rtw_memset(ptr, payload, pkt_end - ptr);
+	memset(ptr, payload, pkt_end - ptr);
 
 	/* 3 6. start thread */
 	pmp_priv->tx.PktTxThread = kthread_run(mp_xmit_packet_thread, pmp_priv, "RTW_MP_THREAD");
@@ -789,9 +782,11 @@ void SetPacketRx(struct adapter *pAdapter, u8 bStartRx)
 
 	if (bStartRx) {
 		/*  Accept CRC error and destination address */
-		pHalData->ReceiveConfig = AAP | APM | AM | AB | APP_ICV | ADF | AMF | HTC_LOC_CTRL | APP_MIC | APP_PHYSTS;
+		pHalData->ReceiveConfig = AAP | APM | AM | AB | APP_ICV |
+					  AMF | ADF | APP_FCS | HTC_LOC_CTRL |
+					  APP_MIC | APP_PHYSTS;
 
-		pHalData->ReceiveConfig |= ACRC32;
+		pHalData->ReceiveConfig |= (RCR_ACRC32 | RCR_AAP);
 
 		rtw_write32(pAdapter, REG_RCR, pHalData->ReceiveConfig);
 
@@ -857,7 +852,6 @@ static u32 rtw_GetPSDData(struct adapter *pAdapter, u32 point)
 {
 	int psd_val;
 
-
 	psd_val = rtw_read32(pAdapter, 0x808);
 	psd_val &= 0xFFBFFC00;
 	psd_val |= point;
@@ -881,13 +875,11 @@ static u32 rtw_GetPSDData(struct adapter *pAdapter, u32 point)
  * 256	128			128 + 256 = 384
  * 512	256			256 + 512 = 768
  * 1024	512			512 + 1024 = 1536
- *
  */
 u32 mp_query_psd(struct adapter *pAdapter, u8 *data)
 {
 	u32 i, psd_pts = 0, psd_start = 0, psd_stop = 0;
 	u32 psd_data = 0;
-
 
 	if (!netif_running(pAdapter->pnetdev)) {
 		RT_TRACE(_module_mp_, _drv_warning_, ("mp_query_psd: Fail! interface not opened!\n"));
@@ -907,7 +899,7 @@ u32 mp_query_psd(struct adapter *pAdapter, u8 *data)
 		sscanf(data, "pts =%d, start =%d, stop =%d", &psd_pts, &psd_start, &psd_stop);
 	}
 
-	_rtw_memset(data, '\0', sizeof(*data));
+	memset(data, '\0', sizeof(*data));
 
 	i = psd_start;
 	while (i < psd_stop) {
@@ -926,8 +918,8 @@ u32 mp_query_psd(struct adapter *pAdapter, u8 *data)
 
 void _rtw_mp_xmit_priv(struct xmit_priv *pxmitpriv)
 {
-	   int i, res;
-	  struct adapter *padapter = pxmitpriv->adapter;
+	int i, res;
+	 struct adapter *padapter = pxmitpriv->adapter;
 	struct xmit_buf *pxmitbuf = (struct xmit_buf *)pxmitpriv->pxmitbuf;
 
 	u32 max_xmit_extbuf_size = MAX_XMIT_EXTBUF_SZ;
@@ -936,8 +928,8 @@ void _rtw_mp_xmit_priv(struct xmit_priv *pxmitpriv)
 		max_xmit_extbuf_size = MAX_XMIT_EXTBUF_SZ;
 		num_xmit_extbuf = NR_XMIT_EXTBUFF;
 	} else {
-		max_xmit_extbuf_size = 20000;
-		num_xmit_extbuf = 1;
+		max_xmit_extbuf_size = 6000;
+		num_xmit_extbuf = 8;
 	}
 
 	pxmitbuf = (struct xmit_buf *)pxmitpriv->pxmit_extbuf;
@@ -951,8 +943,8 @@ void _rtw_mp_xmit_priv(struct xmit_priv *pxmitpriv)
 		rtw_vmfree(pxmitpriv->pallocated_xmit_extbuf, num_xmit_extbuf * sizeof(struct xmit_buf) + 4);
 
 	if (padapter->registrypriv.mp_mode == 0) {
-		max_xmit_extbuf_size = 20000;
-		num_xmit_extbuf = 1;
+		max_xmit_extbuf_size = 6000;
+		num_xmit_extbuf = 8;
 	} else {
 		max_xmit_extbuf_size = MAX_XMIT_EXTBUF_SZ;
 		num_xmit_extbuf = NR_XMIT_EXTBUFF;
@@ -974,7 +966,7 @@ void _rtw_mp_xmit_priv(struct xmit_priv *pxmitpriv)
 	pxmitbuf = (struct xmit_buf *)pxmitpriv->pxmit_extbuf;
 
 	for (i = 0; i < num_xmit_extbuf; i++) {
-		_rtw_init_listhead(&pxmitbuf->list);
+		INIT_LIST_HEAD(&pxmitbuf->list);
 
 		pxmitbuf->priv_data = NULL;
 		pxmitbuf->padapter = padapter;
@@ -986,7 +978,7 @@ void _rtw_mp_xmit_priv(struct xmit_priv *pxmitpriv)
 			goto exit;
 		}
 
-		rtw_list_insert_tail(&pxmitbuf->list, &(pxmitpriv->free_xmit_extbuf_queue.queue));
+		list_add_tail(&pxmitbuf->list, &(pxmitpriv->free_xmit_extbuf_queue.queue));
 		pxmitbuf++;
 	}
 
@@ -995,3 +987,15 @@ void _rtw_mp_xmit_priv(struct xmit_priv *pxmitpriv)
 exit:
 	;
 }
+
+void Hal_ProSetCrystalCap (struct adapter *pAdapter, u32 CrystalCapVal)
+{
+	struct hal_data_8188e	*pHalData = GET_HAL_DATA(pAdapter);
+
+	CrystalCapVal = CrystalCapVal & 0x3F;
+
+	// write 0x24[16:11] = 0x24[22:17] = CrystalCap
+	PHY_SetBBReg(pAdapter, REG_AFE_XTAL_CTRL, 0x7FF800,
+		     (CrystalCapVal | (CrystalCapVal << 6)));
+}
+

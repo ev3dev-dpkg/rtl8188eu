@@ -72,7 +72,6 @@ int ips_leave(struct adapter *padapter)
 	int result = _SUCCESS;
 	int keyid;
 
-
 	_enter_pwrlock(&pwrpriv->lock);
 
 	if ((pwrpriv->rf_pwrstate == rf_off) && (!pwrpriv->bips_processing)) {
@@ -122,11 +121,12 @@ static bool rtw_pwr_unassociated_idle(struct adapter *adapter)
 
 	bool ret = false;
 
-	if (adapter->pwrctrlpriv.ips_deny_time >= rtw_get_current_time())
+	if (adapter->pwrctrlpriv.ips_deny_time >= jiffies)
 		goto exit;
 
 	if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE|WIFI_SITE_MONITOR) ||
 	    check_fwstate(pmlmepriv, WIFI_UNDER_LINKING|WIFI_UNDER_WPS) ||
+	    check_fwstate(pmlmepriv, WIFI_UNDER_WPS) ||
 	    check_fwstate(pmlmepriv, WIFI_AP_STATE) ||
 	    check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE|WIFI_ADHOC_STATE) ||
 #if defined(CONFIG_88EU_P2P)
@@ -226,10 +226,7 @@ void rtw_set_rpwm(struct adapter *padapter, u8 pslv)
 	u8	rpwm;
 	struct pwrctrl_priv *pwrpriv = &padapter->pwrctrlpriv;
 
-_func_enter_;
-
 	pslv = PS_STATE(pslv);
-
 
 	if (pwrpriv->btcoex_rfon) {
 		if (pslv < PS_STATE_S4)
@@ -275,7 +272,6 @@ _func_enter_;
 	pwrpriv->tog += 0x80;
 	pwrpriv->cpwm = pslv;
 
-_func_exit_;
 }
 
 static u8 PS_RDY_CHECK(struct adapter *padapter)
@@ -284,8 +280,7 @@ static u8 PS_RDY_CHECK(struct adapter *padapter)
 	struct pwrctrl_priv	*pwrpriv = &padapter->pwrctrlpriv;
 	struct mlme_priv	*pmlmepriv = &(padapter->mlmepriv);
 
-
-	curr_time = rtw_get_current_time();
+	curr_time = jiffies;
 	delta_time = curr_time - pwrpriv->DelayLPSLastTimeStamp;
 
 	if (delta_time < LPS_DELAY_TIME)
@@ -312,8 +307,6 @@ void rtw_set_ps_mode(struct adapter *padapter, u8 ps_mode, u8 smart_ps, u8 bcn_a
 #ifdef CONFIG_88EU_P2P
 	struct wifidirect_info	*pwdinfo = &(padapter->wdinfo);
 #endif /* CONFIG_88EU_P2P */
-
-_func_enter_;
 
 	RT_TRACE(_module_rtl871x_pwrctrl_c_, _drv_notice_,
 		 ("%s: PowerMode=%d Smart_PS=%d\n",
@@ -363,7 +356,6 @@ _func_enter_;
 		}
 	}
 
-_func_exit_;
 }
 
 /*
@@ -378,8 +370,7 @@ s32 LPS_RF_ON_check(struct adapter *padapter, u32 delay_ms)
 	u8 bAwake = false;
 	s32 err = 0;
 
-
-	start_time = rtw_get_current_time();
+	start_time = jiffies;
 	while (1) {
 		rtw_hal_get_hwreg(padapter, HW_VAR_FWLPS_RF_ON, &bAwake);
 		if (bAwake)
@@ -410,8 +401,6 @@ void LPS_Enter(struct adapter *padapter)
 {
 	struct pwrctrl_priv	*pwrpriv = &padapter->pwrctrlpriv;
 
-_func_enter_;
-
 	if (PS_RDY_CHECK(padapter) == false)
 		return;
 
@@ -422,14 +411,14 @@ _func_enter_;
 				pwrpriv->bpower_saving = true;
 				DBG_88E("%s smart_ps:%d\n", __func__, pwrpriv->smart_ps);
 				/* For Tenda W311R IOT issue */
-				rtw_set_ps_mode(padapter, pwrpriv->power_mgnt, pwrpriv->smart_ps, 0);
+				rtw_set_ps_mode(padapter, pwrpriv->power_mgnt,
+						pwrpriv->smart_ps, 0x40);
 			}
 		} else {
 			pwrpriv->LpsIdleCount++;
 		}
 	}
 
-_func_exit_;
 }
 
 #define LPS_LEAVE_TIMEOUT_MS 100
@@ -440,11 +429,9 @@ void LPS_Leave(struct adapter *padapter)
 {
 	struct pwrctrl_priv	*pwrpriv = &padapter->pwrctrlpriv;
 
-_func_enter_;
-
 	if (pwrpriv->bLeisurePs) {
 		if (pwrpriv->pwr_mode != PS_MODE_ACTIVE) {
-			rtw_set_ps_mode(padapter, PS_MODE_ACTIVE, 0, 0);
+			rtw_set_ps_mode(padapter, PS_MODE_ACTIVE, 0, 0x40);
 
 			if (pwrpriv->pwr_mode == PS_MODE_ACTIVE)
 				LPS_RF_ON_check(padapter, LPS_LEAVE_TIMEOUT_MS);
@@ -453,7 +440,6 @@ _func_enter_;
 
 	pwrpriv->bpower_saving = false;
 
-_func_exit_;
 }
 
 /*  */
@@ -465,22 +451,17 @@ void LeaveAllPowerSaveMode(struct adapter *Adapter)
 	struct mlme_priv	*pmlmepriv = &(Adapter->mlmepriv);
 	u8	enqueue = 0;
 
-_func_enter_;
-
 	if (check_fwstate(pmlmepriv, _FW_LINKED)) { /* connect */
 		p2p_ps_wk_cmd(Adapter, P2P_PS_DISABLE, enqueue);
 
 		rtw_lps_ctrl_wk_cmd(Adapter, LPS_CTRL_LEAVE, enqueue);
 	}
 
-_func_exit_;
 }
 
 void rtw_init_pwrctrl_priv(struct adapter *padapter)
 {
 	struct pwrctrl_priv *pwrctrlpriv = &padapter->pwrctrlpriv;
-
-_func_enter_;
 
 	_init_pwrlock(&pwrctrlpriv->lock);
 	pwrctrlpriv->rf_pwrstate = rf_on;
@@ -519,18 +500,14 @@ _func_enter_;
 
 	_init_timer(&(pwrctrlpriv->pwr_state_check_timer), padapter->pnetdev, pwr_state_check_handler, (u8 *)padapter);
 
-_func_exit_;
 }
 
 void rtw_free_pwrctrl_priv(struct adapter *adapter)
 {
 	struct pwrctrl_priv *pwrctrlpriv = &adapter->pwrctrlpriv;
 
-_func_enter_;
-
 	_free_pwrlock(&pwrctrlpriv->lock);
 
-_func_exit_;
 }
 
 u8 rtw_interface_ps_func(struct adapter *padapter, enum hal_intf_ps_func efunc_id, u8 *val)
@@ -541,11 +518,10 @@ u8 rtw_interface_ps_func(struct adapter *padapter, enum hal_intf_ps_func efunc_i
 	return bResult;
 }
 
-
 inline void rtw_set_ips_deny(struct adapter *padapter, u32 ms)
 {
 	struct pwrctrl_priv *pwrpriv = &padapter->pwrctrlpriv;
-	pwrpriv->ips_deny_time = rtw_get_current_time() + rtw_ms_to_systime(ms);
+	pwrpriv->ips_deny_time = jiffies + rtw_ms_to_systime(ms);
 }
 
 /*
@@ -560,12 +536,11 @@ int _rtw_pwr_wakeup(struct adapter *padapter, u32 ips_deffer_ms, const char *cal
 	struct pwrctrl_priv *pwrpriv = &padapter->pwrctrlpriv;
 	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
 	int ret = _SUCCESS;
+	u32 start = jiffies;
 
-	if (pwrpriv->ips_deny_time < rtw_get_current_time() + rtw_ms_to_systime(ips_deffer_ms))
-		pwrpriv->ips_deny_time = rtw_get_current_time() + rtw_ms_to_systime(ips_deffer_ms);
+	if (pwrpriv->ips_deny_time < jiffies + rtw_ms_to_systime(ips_deffer_ms))
+		pwrpriv->ips_deny_time = jiffies + rtw_ms_to_systime(ips_deffer_ms);
 
-{
-	u32 start = rtw_get_current_time();
 	if (pwrpriv->ps_processing) {
 		DBG_88E("%s wait ps_processing...\n", __func__);
 		while (pwrpriv->ps_processing && rtw_get_passing_time_ms(start) <= 3000)
@@ -575,12 +550,17 @@ int _rtw_pwr_wakeup(struct adapter *padapter, u32 ips_deffer_ms, const char *cal
 		else
 			DBG_88E("%s wait ps_processing done\n", __func__);
 	}
-}
 
 	/* System suspend is not allowed to wakeup */
-	if ((!pwrpriv->bInternalAutoSuspend) && (pwrpriv->bInSuspend)) {
-		ret = _FAIL;
-		goto exit;
+	if ((!pwrpriv->bInternalAutoSuspend) && pwrpriv->bInSuspend) {
+		while (pwrpriv->bInSuspend &&
+		       (rtw_get_passing_time_ms(start) <= 3000 ||
+		       (rtw_get_passing_time_ms(start) <= 500)))
+				rtw_msleep_os(10);
+		if (pwrpriv->bInSuspend)
+			DBG_88E("%s wait bInSuspend timeout\n", __func__);
+		else
+			DBG_88E("%s wait bInSuspend done\n", __func__);
 	}
 
 	/* block??? */
@@ -616,8 +596,8 @@ int _rtw_pwr_wakeup(struct adapter *padapter, u32 ips_deffer_ms, const char *cal
 	}
 
 exit:
-	if (pwrpriv->ips_deny_time < rtw_get_current_time() + rtw_ms_to_systime(ips_deffer_ms))
-		pwrpriv->ips_deny_time = rtw_get_current_time() + rtw_ms_to_systime(ips_deffer_ms);
+	if (pwrpriv->ips_deny_time < jiffies + rtw_ms_to_systime(ips_deffer_ms))
+		pwrpriv->ips_deny_time = jiffies + rtw_ms_to_systime(ips_deffer_ms);
 	return ret;
 }
 

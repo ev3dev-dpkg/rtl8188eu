@@ -20,13 +20,13 @@
 #ifndef _WIFI_H_
 #define _WIFI_H_
 
+#include <linux/ieee80211.h>
 
 #ifdef BIT
 /* error	"BIT define occurred earlier elsewhere!\n" */
 #undef BIT
 #endif
 #define BIT(x)	(1 << (x))
-
 
 #define WLAN_ETHHDR_LEN		14
 #define WLAN_ETHADDR_LEN	6
@@ -262,7 +262,6 @@ enum WIFI_REG_DOMAIN {
 
 #define get_tofr_ds(pframe)	((GetToDs(pframe) << 1) | GetFrDs(pframe))
 
-
 #define SetMFrag(pbuf)	\
 	*(__le16 *)(pbuf) |= cpu_to_le16(_MORE_FRAG_)
 
@@ -303,7 +302,6 @@ enum WIFI_REG_DOMAIN {
 
 #define ClearPrivacy(pbuf)	\
 	*(__le16 *)(pbuf) &= (~cpu_to_le16(_PRIVACY_))
-
 
 #define GetOrder(pbuf)					\
 	(((*(__le16 *)(pbuf)) & cpu_to_le16(_ORDER_)) != 0)
@@ -353,7 +351,6 @@ enum WIFI_REG_DOMAIN {
 
 #define SetDuration(pbuf, dur) \
 	*(__le16 *)((size_t)(pbuf) + 2) = cpu_to_le16(0xffff & (dur))
-
 
 #define SetPriority(pbuf, tid)	\
 	*(__le16 *)(pbuf) |= cpu_to_le16(tid & 0xf)
@@ -529,7 +526,6 @@ static inline int IsFrameTypeCtrl(unsigned char *pframe)
 #define _HT_ADD_INFO_IE_	61 /* _HT_EXTRA_INFO_IE_ */
 #define _WAPI_IE_		68
 
-
 #define	EID_BSSCoexistence	72 /*  20/40 BSS Coexistence */
 #define	EID_BSSIntolerantChlReport	73
 #define _RIC_Descriptor_IE_	75
@@ -597,7 +593,6 @@ static inline int IsFrameTypeCtrl(unsigned char *pframe)
 #define _WMM_IE_Length_				7  /*  for WMM STA */
 #define _WMM_Para_Element_Length_		24
 
-
 /*-----------------------------------------------------------------------------
 				Below is the definition for 802.11n
 ------------------------------------------------------------------------------*/
@@ -610,7 +605,6 @@ static inline int IsFrameTypeCtrl(unsigned char *pframe)
 #define GetOrderBit(pbuf)			\
 	(((*(unsigned short *)(pbuf)) & le16_to_cpu(_ORDER_)) != 0)
 
-
 /**
  * struct rtw_ieee80211_bar - HT Block Ack Request
  *
@@ -618,12 +612,12 @@ static inline int IsFrameTypeCtrl(unsigned char *pframe)
  * described in 802.11n draft section 7.2.1.7.1
  */
 struct rtw_ieee80211_bar {
-	unsigned short frame_control;
-	unsigned short duration;
-	unsigned char ra[6];
-	unsigned char ta[6];
-	unsigned short control;
-	unsigned short start_seq_num;
+	__le16 frame_control;
+	__le16 duration;
+	unsigned char ra[ETH_ALEN];
+	unsigned char ta[ETH_ALEN];
+	__le16 control;
+	__le16 start_seq_num;
 } __packed;
 
 /* 802.11 BAR control masks */
@@ -638,12 +632,15 @@ struct rtw_ieee80211_bar {
  */
 
 struct rtw_ieee80211_ht_cap {
-	unsigned short	cap_info;
-	unsigned char	ampdu_params_info;
-	unsigned char	supp_mcs_set[16];
-	unsigned short	extended_ht_cap_info;
-	unsigned int	tx_BF_cap_info;
-	unsigned char   antenna_selection_info;
+	__le16	cap_info;
+	u8	ampdu_params_info;
+	union {
+		struct ieee80211_mcs_info mcs;
+		u8 supp_mcs_set[16];
+	};
+	__le16	extended_ht_cap_info;
+	__le32	tx_BF_cap_info;
+	u8   antenna_selection_info;
 } __packed;
 
 /**
@@ -655,8 +652,8 @@ struct rtw_ieee80211_ht_cap {
 struct ieee80211_ht_addt_info {
 	unsigned char	control_chan;
 	unsigned char	ht_param;
-	unsigned short	operation_mode;
-	unsigned short	stbc_param;
+	__le16	operation_mode;
+	__le16	stbc_param;
 	unsigned char	basic_set[16];
 } __packed;
 
@@ -666,8 +663,8 @@ struct HT_caps_element {
 			__le16	HT_caps_info;
 			unsigned char	AMPDU_para;
 			unsigned char	MCS_rate[16];
-			unsigned short	HT_ext_caps;
-			unsigned int	Beamforming_caps;
+			__le16	HT_ext_caps;
+			__le16	Beamforming_caps;
 			unsigned char	ASEL_caps;
 		} HT_cap_element;
 		unsigned char HT_cap[26];
@@ -693,10 +690,11 @@ struct WMM_para_element {
 } __packed;
 
 struct ADDBA_request {
+	unsigned char	action_code;
 	unsigned char	dialog_token;
-	unsigned short	BA_para_set;
-	unsigned short	BA_timeout_value;
-	unsigned short	BA_starting_seqctrl;
+	__le16	BA_para_set;
+	__le16	BA_timeout_value;
+	__le16	BA_starting_seqctrl;
 } __packed;
 
 enum ht_cap_ampdu_factor {
@@ -753,13 +751,11 @@ enum ht_cap_ampdu_factor {
 #define IEEE80211_MIN_AMPDU_BUF 0x8
 #define IEEE80211_MAX_AMPDU_BUF 0x40
 
-
 /* Spatial Multiplexing Power Save Modes */
 #define WLAN_HT_CAP_SM_PS_STATIC	0
 #define WLAN_HT_CAP_SM_PS_DYNAMIC	1
 #define WLAN_HT_CAP_SM_PS_INVALID	2
 #define WLAN_HT_CAP_SM_PS_DISABLED	3
-
 
 #define OP_MODE_PURE                    0
 #define OP_MODE_MAY_BE_LEGACY_STAS      1
@@ -962,7 +958,6 @@ enum ht_cap_ampdu_factor {
 #define	P2P_PRESENCE_REQUEST			1
 #define	P2P_PRESENCE_RESPONSE			2
 #define	P2P_GO_DISC_REQUEST			3
-
 
 #define	P2P_MAX_PERSISTENT_GROUP_NUM		10
 

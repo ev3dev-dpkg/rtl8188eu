@@ -343,12 +343,14 @@ struct mlme_priv {
 	struct __queue free_bss_pool;
 	struct __queue scanned_queue;
 	u8 *free_bss_buf;
+	u8	key_mask; /* use to restore wep key after hal_init */
 	u32	num_of_scanned;
 
 	struct ndis_802_11_ssid	assoc_ssid;
 	u8	assoc_bssid[6];
 
 	struct wlan_network	cur_network;
+	struct wlan_network *cur_network_scanned;
 
 	u32	scan_interval;
 
@@ -373,7 +375,6 @@ struct mlme_priv {
 	struct rt_link_detect LinkDetectInfo;
 	struct timer_list dynamic_chk_timer; /* dynamic/periodic check timer */
 
-	u8	key_mask; /* use for ips to set wep key after ips_leave */
 	u8	acm_mask; /*  for wmm acm mask */
 	u8	ChannelPlan;
 	enum rt_scan_type scan_mode; /*  active: 1, passive: 0 */
@@ -526,48 +527,38 @@ static inline void _clr_fwstate_(struct mlme_priv *pmlmepriv, int state)
  */
 static inline void clr_fwstate(struct mlme_priv *pmlmepriv, int state)
 {
-	unsigned long irql;
-
-	_enter_critical_bh(&pmlmepriv->lock, &irql);
+	spin_lock_bh(&pmlmepriv->lock);
 	if (check_fwstate(pmlmepriv, state) == true)
 		pmlmepriv->fw_state ^= state;
-	_exit_critical_bh(&pmlmepriv->lock, &irql);
+	spin_unlock_bh(&pmlmepriv->lock);
 }
 
 static inline void clr_fwstate_ex(struct mlme_priv *pmlmepriv, int state)
 {
-	unsigned long irql;
-
-	_enter_critical_bh(&pmlmepriv->lock, &irql);
+	spin_lock_bh(&pmlmepriv->lock);
 	_clr_fwstate_(pmlmepriv, state);
-	_exit_critical_bh(&pmlmepriv->lock, &irql);
+	spin_unlock_bh(&pmlmepriv->lock);
 }
 
 static inline void up_scanned_network(struct mlme_priv *pmlmepriv)
 {
-	unsigned long irql;
-
-	_enter_critical_bh(&pmlmepriv->lock, &irql);
+	spin_lock_bh(&pmlmepriv->lock);
 	pmlmepriv->num_of_scanned++;
-	_exit_critical_bh(&pmlmepriv->lock, &irql);
+	spin_unlock_bh(&pmlmepriv->lock);
 }
 
 static inline void down_scanned_network(struct mlme_priv *pmlmepriv)
 {
-	unsigned long irql;
-
-	_enter_critical_bh(&pmlmepriv->lock, &irql);
+	spin_lock_bh(&pmlmepriv->lock);
 	pmlmepriv->num_of_scanned--;
-	_exit_critical_bh(&pmlmepriv->lock, &irql);
+	spin_unlock_bh(&pmlmepriv->lock);
 }
 
 static inline void set_scanned_network_val(struct mlme_priv *pmlmepriv, int val)
 {
-	unsigned long irql;
-
-	_enter_critical_bh(&pmlmepriv->lock, &irql);
+	spin_lock_bh(&pmlmepriv->lock);
 	pmlmepriv->num_of_scanned = val;
-	_exit_critical_bh(&pmlmepriv->lock, &irql);
+	spin_unlock_bh(&pmlmepriv->lock);
 }
 
 u16 rtw_get_capability(struct wlan_bssid_ex *bss);
@@ -604,7 +595,6 @@ void rtw_scan_timeout_handler(struct adapter *adapter);
 #define rtw_set_scan_deny_timer_hdl(adapter) do {} while (0)
 #define rtw_set_scan_deny(adapter, ms) do {} while (0)
 
-
 int _rtw_init_mlme_priv(struct adapter *padapter);
 
 void rtw_free_mlme_priv_ie_data(struct mlme_priv *pmlmepriv);
@@ -617,12 +607,10 @@ struct wlan_network *_rtw_dequeue_network(struct __queue *queue);
 
  struct wlan_network *_rtw_alloc_network(struct mlme_priv *pmlmepriv);
 
-
 void _rtw_free_network(struct mlme_priv *pmlmepriv,
 		       struct wlan_network *pnetwork, u8 isfreeall);
 void _rtw_free_network_nolock(struct mlme_priv *pmlmepriv,
 			      struct wlan_network *pnetwork);
-
 
 struct wlan_network* _rtw_find_network(struct __queue *scanned_queue, u8 *addr);
 
@@ -630,11 +618,9 @@ void _rtw_free_network_queue(struct adapter *padapter, u8 isfreeall);
 
 int rtw_if_up(struct adapter *padapter);
 
-
 u8 *rtw_get_capability_from_ie(u8 *ie);
 u8 *rtw_get_timestampe_from_ie(u8 *ie);
 u8 *rtw_get_beacon_interval_from_ie(u8 *ie);
-
 
 void rtw_joinbss_reset(struct adapter *padapter);
 
@@ -649,7 +635,10 @@ int is_same_network(struct wlan_bssid_ex *src, struct wlan_bssid_ex *dst);
 
 void rtw_roaming(struct adapter *padapter, struct wlan_network *tgt_network);
 void _rtw_roaming(struct adapter *padapter, struct wlan_network *tgt_network);
+void rtw_set_roaming(struct adapter *adapter, u8 to_roaming);
+u8 rtw_to_roaming(struct adapter *adapter);
 
-void rtw_stassoc_hw_rpt(struct adapter *adapter,struct sta_info *psta);
+void rtw_sta_media_status_rpt(struct adapter *adapter, struct sta_info *psta,
+			      u32 mstatus);
 
 #endif /* __RTL871X_MLME_H_ */

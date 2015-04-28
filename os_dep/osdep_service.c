@@ -18,7 +18,6 @@
  *
  ******************************************************************************/
 
-
 #define _OSDEP_SERVICE_C_
 
 #include <osdep_service.h>
@@ -114,66 +113,14 @@ void rtw_mfree2d(void *pbuf, int h, int w, int size)
 	kfree(pbuf);
 }
 
-int _rtw_memcmp(void *dst, void *src, u32 sz)
-{
-/* under Linux/GNU/GLibc, the return value of memcmp for two same
- * mem. chunk is 0 */
-	if (!(memcmp(dst, src, sz)))
-		return true;
-	else
-		return false;
-}
-
-void _rtw_memset(void *pbuf, int c, u32 sz)
-{
-	memset(pbuf, c, sz);
-}
-
-void _rtw_init_listhead(struct list_head *list)
-{
-	INIT_LIST_HEAD(list);
-}
-
 /*
 For the following list_xxx operations,
 caller must guarantee the atomic context.
 Otherwise, there will be racing condition.
 */
-u32	rtw_is_list_empty(struct list_head *phead)
-{
-	if (list_empty(phead))
-		return true;
-	else
-		return false;
-}
-
-void rtw_list_insert_head(struct list_head *plist, struct list_head *phead)
-{
-	list_add(plist, phead);
-}
-
-void rtw_list_insert_tail(struct list_head *plist, struct list_head *phead)
-{
-	list_add_tail(plist, phead);
-}
-
 /*
 Caller must check if the list is empty before calling rtw_list_delete
 */
-
-void _rtw_init_sema(struct semaphore *sema, int init_val)
-{
-	sema_init(sema, init_val);
-}
-
-void _rtw_free_sema(struct semaphore *sema)
-{
-}
-
-void _rtw_up_sema(struct semaphore *sema)
-{
-	up(sema);
-}
 
 u32 _rtw_down_sema(struct semaphore *sema)
 {
@@ -193,37 +140,14 @@ void	_rtw_mutex_free(struct mutex *pmutex)
 	mutex_destroy(pmutex);
 }
 
-void	_rtw_spinlock_init(spinlock_t *plock)
-{
-	spin_lock_init(plock);
-}
-
 void	_rtw_spinlock_free(spinlock_t *plock)
 {
 }
 
 void	_rtw_init_queue(struct __queue *pqueue)
 {
-	_rtw_init_listhead(&(pqueue->queue));
-	_rtw_spinlock_init(&(pqueue->lock));
-}
-
-u32	  _rtw_queue_empty(struct __queue *pqueue)
-{
-	return rtw_is_list_empty(&(pqueue->queue));
-}
-
-u32 rtw_end_of_queue_search(struct list_head *head, struct list_head *plist)
-{
-	if (head == plist)
-		return true;
-	else
-		return false;
-}
-
-u32	rtw_get_current_time(void)
-{
-	return jiffies;
+	INIT_LIST_HEAD(&(pqueue->queue));
+	spin_lock_init(&(pqueue->lock));
 }
 
 inline u32 rtw_systime_to_ms(u32 systime)
@@ -236,8 +160,7 @@ inline u32 rtw_ms_to_systime(u32 ms)
 	return ms * HZ / 1000;
 }
 
-/*  the input parameter start use the same unit as returned by
- *  rtw_get_current_time */
+/*  the input parameter start use the same unit as jiffies */
 inline s32 rtw_get_passing_time_ms(u32 start)
 {
 	return rtw_systime_to_ms(jiffies-start);
@@ -356,6 +279,10 @@ inline int ATOMIC_DEC_RETURN(ATOMIC_T *v)
 	return atomic_dec_return(v);
 }
 
+static const struct device_type wlan_type = {
+	.name = "wlan",
+};
+
 struct net_device *rtw_alloc_etherdev_with_old_priv(int sizeof_priv,
 						    void *old_priv)
 {
@@ -366,6 +293,7 @@ struct net_device *rtw_alloc_etherdev_with_old_priv(int sizeof_priv,
 	if (!pnetdev)
 		goto RETURN;
 
+	pnetdev->dev.type = &wlan_type;
 	pnpi = netdev_priv(pnetdev);
 	pnpi->priv = old_priv;
 	pnpi->sizeof_priv = sizeof_priv;
@@ -520,7 +448,6 @@ keep_ori:
 	/* free ori */
 	kfree(ori);
 }
-
 
 /**
  * rtw_cbuf_full - test if cbuf is full

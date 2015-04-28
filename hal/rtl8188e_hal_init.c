@@ -60,7 +60,7 @@ static s32 iol_execute(struct adapter *padapter, u8 control)
 	reg_0x88 = rtw_read8(padapter, REG_HMEBOX_E0);
 	rtw_write8(padapter, REG_HMEBOX_E0,  reg_0x88|control);
 
-	start = rtw_get_current_time();
+	start = jiffies;
 	while ((reg_0x88 = rtw_read8(padapter, REG_HMEBOX_E0)) & control &&
 	       (passing_time = rtw_get_passing_time_ms(start)) < 1000) {
 		;
@@ -218,7 +218,7 @@ static void efuse_read_phymap_from_txpktbuf(
 	u16 dbg_addr = 0;
 	u32 start  = 0, passing_time = 0;
 	u8 reg_0x143 = 0;
-	u32 lo32 = 0, hi32 = 0;
+	__le32 lo32 = 0, hi32 = 0;
 	u16 len = 0, count = 0;
 	int i = 0;
 	u16 limit = *size;
@@ -238,36 +238,33 @@ static void efuse_read_phymap_from_txpktbuf(
 		rtw_write16(adapter, REG_PKTBUF_DBG_ADDR, dbg_addr+i);
 
 		rtw_write8(adapter, REG_TXPKTBUF_DBG, 0);
-		start = rtw_get_current_time();
+		start = jiffies;
 		while (!(reg_0x143 = rtw_read8(adapter, REG_TXPKTBUF_DBG)) &&
 		       (passing_time = rtw_get_passing_time_ms(start)) < 1000) {
 			DBG_88E("%s polling reg_0x143:0x%02x, reg_0x106:0x%02x\n", __func__, reg_0x143, rtw_read8(adapter, 0x106));
 			rtw_usleep_os(100);
 		}
 
-		lo32 = rtw_read32(adapter, REG_PKTBUF_DBG_DATA_L);
-		hi32 = rtw_read32(adapter, REG_PKTBUF_DBG_DATA_H);
+		/* data from EEPROM needs to be in LE */
+		lo32 = cpu_to_le32(rtw_read32(adapter, REG_PKTBUF_DBG_DATA_L));
+		hi32 = cpu_to_le32(rtw_read32(adapter, REG_PKTBUF_DBG_DATA_H));
 
 		if (i == 0) {
-			u8 lenc[2];
-			u16 lenbak, aaabak;
-			u16 aaa;
-			lenc[0] = rtw_read8(adapter, REG_PKTBUF_DBG_DATA_L);
-			lenc[1] = rtw_read8(adapter, REG_PKTBUF_DBG_DATA_L+1);
+			/* Although lenc is only used in a debug statement,
+			 * do not remove it as the rtw_read16() call consumes
+			 * 2 bytes from the EEPROM source.
+			 */
+			u16 lenc = rtw_read16(adapter, REG_PKTBUF_DBG_DATA_L);
 
-			aaabak = le16_to_cpup((__le16 *)lenc);
-			lenbak = le16_to_cpu(*((__le16 *)lenc));
-			aaa = le16_to_cpup((__le16 *)&lo32);
-			len = le16_to_cpu(*((__le16 *)&lo32));
+			len = le32_to_cpu(lo32) & 0x0000ffff;
 
 			limit = (len-2 < limit) ? len-2 : limit;
 
-			DBG_88E("%s len:%u, lenbak:%u, aaa:%u, aaabak:%u\n", __func__, len, lenbak, aaa, aaabak);
+			DBG_88E("%s len:%u, lenc:%u\n", __func__, len, lenc);
 
 			memcpy(pos, ((u8 *)&lo32)+2, (limit >= count+2) ? 2 : limit-count);
 			count += (limit >= count+2) ? 2 : limit-count;
 			pos = content+count;
-
 		} else {
 			memcpy(pos, ((u8 *)&lo32), (limit >= count+4) ? 4 : limit-count);
 			count += (limit >= count+4) ? 4 : limit-count;
@@ -296,7 +293,7 @@ static s32 iol_read_efuse(struct adapter *padapter, u8 txpktbuf_bndy, u16 offset
 	u16 size = 512;
 
 	rtw_write8(padapter, REG_TDECTRL+1, txpktbuf_bndy);
-	_rtw_memset(physical_map, 0xFF, 512);
+	memset(physical_map, 0xFF, 512);
 	rtw_write8(padapter, REG_PKT_BUFF_ACCESS_CTRL, TXPKT_BUF_SELECT);
 	status = iol_execute(padapter, CMD_READ_EFUSE_MAP);
 	if (status == _SUCCESS)
@@ -588,7 +585,10 @@ static int load_firmware(struct rt_firmware *pFirmware, struct device *device)
 	s32	rtStatus = _SUCCESS;
 	const struct firmware *fw;
 	const char *fw_name = "rtlwifi/rtl8188eufw.bin";
-	if (request_firmware(&fw, fw_name, device)) {
+	int err = request_firmware(&fw, fw_name, device);
+
+	if (err) {
+		pr_err("Request firmware failed with error 0x%x\n", err);
 		rtStatus = _FAIL;
 		goto Exit;
 	}
@@ -605,6 +605,7 @@ static int load_firmware(struct rt_firmware *pFirmware, struct device *device)
 
 	pFirmware->szFwBuffer = kzalloc(FW_8188E_SIZE, GFP_KERNEL);
 	if (!pFirmware->szFwBuffer) {
+		pr_err("Failed to allocate pFirmware->szFwBuffer\n");
 		rtStatus = _FAIL;
 		goto Exit;
 	}
@@ -666,7 +667,7 @@ s32 rtl8188e_FirmwareDownload(struct adapter *padapter)
 	}
 
 	_FWDownloadEnable(padapter, true);
-	fwdl_start_time = rtw_get_current_time();
+	fwdl_start_time = jiffies;
 	while (1) {
 		/* reset the FWDL chksum */
 		rtw_write8(padapter, REG_MCUFWDL, rtw_read8(padapter, REG_MCUFWDL) | FWDL_ChkSum_rpt);
@@ -711,10 +712,10 @@ void rtl8188e_InitializeFirmwareVars(struct adapter *padapter)
 
 static void rtl8188e_free_hal_data(struct adapter *padapter)
 {
-_func_enter_;
+
 	kfree(padapter->HalData);
 	padapter->HalData = NULL;
-_func_exit_;
+
 }
 
 /*  */
@@ -805,7 +806,6 @@ rtl8188e_EfusePowerSwitch(
 {
 	hal_EfusePowerSwitch_RTL8188E(pAdapter, bWrite, PwrState);
 }
-
 
 static void Hal_EfuseReadEFuse88E(struct adapter *Adapter,
 	u16			_offset,
@@ -1118,7 +1118,7 @@ static u8 Hal_EfuseWordEnableDataWrite(struct adapter *pAdapter, u16 efuse_addr,
 	u8 badworden = 0x0F;
 	u8 tmpdata[8];
 
-	_rtw_memset((void *)tmpdata, 0xff, PGPKT_DATA_SIZE);
+	memset((void *)tmpdata, 0xff, PGPKT_DATA_SIZE);
 
 	if (!(word_en&BIT0)) {
 		tmpaddr = start_addr;
@@ -1268,8 +1268,8 @@ static int hal_EfusePgPacketRead_8188e(struct adapter *pAdapter, u8 offset, u8 *
 	if (offset > max_section)
 		return false;
 
-	_rtw_memset((void *)data, 0xff, sizeof(u8)*PGPKT_DATA_SIZE);
-	_rtw_memset((void *)tmpdata, 0xff, sizeof(u8)*PGPKT_DATA_SIZE);
+	memset((void *)data, 0xff, sizeof(u8)*PGPKT_DATA_SIZE);
+	memset((void *)tmpdata, 0xff, sizeof(u8)*PGPKT_DATA_SIZE);
 
 	/*  <Roger_TODO> Efuse has been pre-programmed dummy 5Bytes at the end of Efuse by CP. */
 	/*  Skip dummy parts to prevent unexpected data read from Efuse. */
@@ -1367,7 +1367,7 @@ static bool hal_EfuseFixHeaderProcess(struct adapter *pAdapter, u8 efuseType, st
 	u16	efuse_addr = *pAddr;
 	u32	PgWriteSuccess = 0;
 
-	_rtw_memset((void *)originaldata, 0xff, 8);
+	memset((void *)originaldata, 0xff, 8);
 
 	if (Efuse_PgPacketRead(pAdapter, pFixPkt->offset, originaldata, bPseudoTest)) {
 		/* check if data exist */
@@ -1675,7 +1675,7 @@ hal_EfusePgCheckAvailableAddr(
 
 static void hal_EfuseConstructPGPkt(u8 offset, u8 word_en, u8 *pData, struct pgpkt *pTargetPkt)
 {
-	_rtw_memset((void *)pTargetPkt->data, 0xFF, sizeof(u8)*8);
+	memset((void *)pTargetPkt->data, 0xFF, sizeof(u8)*8);
 	pTargetPkt->offset = offset;
 	pTargetPkt->word_en = word_en;
 	efuse_WordEnableDataRead(word_en, pData, pTargetPkt->data);
@@ -1994,23 +1994,23 @@ Hal_EfuseParseIDCode88E(
 	struct eeprom_priv *pEEPROM = GET_EEPROM_EFUSE_PRIV(padapter);
 	u16			EEPROMId;
 
-	/*  Checl 0x8129 again for making sure autoload status!! */
+	/*  Check 0x8129 again for making sure autoload status!! */
 	EEPROMId = le16_to_cpu(*((__le16 *)hwinfo));
 	if (EEPROMId != RTL_EEPROM_ID) {
-		DBG_88E("EEPROM ID(%#x) is invalid!!\n", EEPROMId);
+		pr_err("EEPROM ID(%#x) is invalid!!\n", EEPROMId);
 		pEEPROM->bautoload_fail_flag = true;
 	} else {
 		pEEPROM->bautoload_fail_flag = false;
 	}
 
-	DBG_88E("EEPROM ID = 0x%04x\n", EEPROMId);
+	pr_info("EEPROM ID = 0x%04x\n", EEPROMId);
 }
 
 static void Hal_ReadPowerValueFromPROM_8188E(struct txpowerinfo24g *pwrInfo24G, u8 *PROMContent, bool AutoLoadFail)
 {
 	u32 rfPath, eeAddr = EEPROM_TX_PWR_INX_88E, group, TxCount = 0;
 
-	_rtw_memset(pwrInfo24G, 0, sizeof(struct txpowerinfo24g));
+	memset(pwrInfo24G, 0, sizeof(struct txpowerinfo24g));
 
 	if (AutoLoadFail) {
 		for (rfPath = 0; rfPath < MAX_RF_PATH; rfPath++) {

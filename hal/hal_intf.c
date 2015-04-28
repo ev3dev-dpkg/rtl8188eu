@@ -116,16 +116,12 @@ uint rtw_hal_deinit(struct adapter *adapt)
 {
 	uint	status = _SUCCESS;
 
-_func_enter_;
-
 	status = adapt->HalFunc.hal_deinit(adapt);
 
 	if (status == _SUCCESS)
 		adapt->hw_init_completed = false;
 	else
 		DBG_88E("\n rtw_hal_deinit: hal_init fail\n");
-
-_func_exit_;
 
 	return status;
 }
@@ -218,6 +214,14 @@ u8 rtw_hal_intf_ps_func(struct adapter *adapt,
 		return adapt->HalFunc.interface_ps_func(adapt, efunc_id,
 							   val);
 	return _FAIL;
+}
+
+s32 rtw_hal_xmitframe_enqueue(struct adapter *padapter,
+			      struct xmit_frame *pxmitframe)
+{
+	if(padapter->HalFunc.hal_xmitframe_enqueue)
+		return padapter->HalFunc.hal_xmitframe_enqueue(padapter, pxmitframe);
+	return false;
 }
 
 s32 rtw_hal_xmit(struct adapter *adapt, struct xmit_frame *pxmitframe)

@@ -18,7 +18,6 @@
  *
  ******************************************************************************/
 
-
 #define _MLME_OSDEP_C_
 
 #include <osdep_service.h>
@@ -31,7 +30,6 @@ void rtw_join_timeout_handler (void *FunctionContext)
 
 	_rtw_join_timeout_handler(adapter);
 }
-
 
 void _rtw_scan_timeout_handler (void *FunctionContext)
 {
@@ -61,12 +59,12 @@ void rtw_init_mlme_timer(struct adapter *padapter)
 
 void rtw_os_indicate_connect(struct adapter *adapter)
 {
-_func_enter_;
+
 	rtw_indicate_wx_assoc_event(adapter);
 	netif_carrier_on(adapter->pnetdev);
 	if (adapter->pid[2] != 0)
 		rtw_signal_process(adapter->pid[2], SIGALRM);
-_func_exit_;
+
 }
 
 void rtw_os_indicate_scan_done(struct adapter *padapter, bool aborted)
@@ -87,12 +85,12 @@ void rtw_reset_securitypriv(struct adapter *adapter)
 		/*  We have to backup the PMK information for WiFi PMK Caching test item. */
 		/*  Backup the btkip_countermeasure information. */
 		/*  When the countermeasure is trigger, the driver have to disconnect with AP for 60 seconds. */
-		_rtw_memset(&backup_pmkid[0], 0x00, sizeof(struct rt_pmkid_list) * NUM_PMKID_CACHE);
+		memset(&backup_pmkid[0], 0x00, sizeof(struct rt_pmkid_list) * NUM_PMKID_CACHE);
 		memcpy(&backup_pmkid[0], &adapter->securitypriv.PMKIDList[0], sizeof(struct rt_pmkid_list) * NUM_PMKID_CACHE);
 		backup_index = adapter->securitypriv.PMKIDIndex;
 		backup_counter = adapter->securitypriv.btkip_countermeasure;
 		backup_time = adapter->securitypriv.btkip_countermeasure_time;
-		_rtw_memset((unsigned char *)&adapter->securitypriv, 0, sizeof(struct security_priv));
+		memset((unsigned char *)&adapter->securitypriv, 0, sizeof(struct security_priv));
 
 		/*  Restore the PMK information to securitypriv structure for the following connection. */
 		memcpy(&adapter->securitypriv.PMKIDList[0],
@@ -119,11 +117,11 @@ void rtw_reset_securitypriv(struct adapter *adapter)
 
 void rtw_os_indicate_disconnect(struct adapter *adapter)
 {
-_func_enter_;
+
 	netif_carrier_off(adapter->pnetdev); /*  Do it first for tx broadcast pkt after disconnection issue! */
 	rtw_indicate_wx_disassoc_event(adapter);
 	 rtw_reset_securitypriv(adapter);
-_func_exit_;
+
 }
 
 void rtw_report_sec_ie(struct adapter *adapter, u8 authmode, u8 *sec_ie)
@@ -132,7 +130,6 @@ void rtw_report_sec_ie(struct adapter *adapter, u8 authmode, u8 *sec_ie)
 	u8	*buff, *p, i;
 	union iwreq_data wrqu;
 
-_func_enter_;
 	RT_TRACE(_module_mlme_osdep_c_, _drv_info_,
 		 ("+rtw_report_sec_ie, authmode=%d\n", authmode));
 	buff = NULL;
@@ -141,8 +138,8 @@ _func_enter_;
 			 ("rtw_report_sec_ie, authmode=%d\n", authmode));
 		buff = rtw_malloc(IW_CUSTOM_MAX);
 		if (!buff)
-			goto exit;
-		_rtw_memset(buff, 0, IW_CUSTOM_MAX);
+			return;
+		memset(buff, 0, IW_CUSTOM_MAX);
 		p = buff;
 		p += sprintf(p, "ASSOCINFO(ReqIEs =");
 		len = sec_ie[1]+2;
@@ -150,15 +147,13 @@ _func_enter_;
 		for (i = 0; i < len; i++)
 			p += sprintf(p, "%02x", sec_ie[i]);
 		p += sprintf(p, ")");
-		_rtw_memset(&wrqu, 0, sizeof(wrqu));
+		memset(&wrqu, 0, sizeof(wrqu));
 		wrqu.data.length = p-buff;
 		wrqu.data.length = (wrqu.data.length < IW_CUSTOM_MAX) ?
 				   wrqu.data.length : IW_CUSTOM_MAX;
 		wireless_send_event(adapter->pnetdev, IWEVCUSTOM, &wrqu, buff);
 		kfree(buff);
 	}
-exit:
-_func_exit_;
 }
 
 static void _survey_timer_hdl(void *FunctionContext)
@@ -209,7 +204,6 @@ void rtw_indicate_sta_assoc_event(struct adapter *padapter, struct sta_info *pst
 	if (pstapriv->sta_aid[psta->aid - 1] != psta)
 		return;
 
-
 	wrqu.addr.sa_family = ARPHRD_ETHER;
 
 	memcpy(wrqu.addr.sa_data, psta->hwaddr, ETH_ALEN);
@@ -232,7 +226,6 @@ void rtw_indicate_sta_disassoc_event(struct adapter *padapter, struct sta_info *
 
 	if (pstapriv->sta_aid[psta->aid - 1] != psta)
 		return;
-
 
 	wrqu.addr.sa_family = ARPHRD_ETHER;
 
