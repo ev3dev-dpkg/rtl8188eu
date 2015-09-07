@@ -1,4 +1,10 @@
-rtl8188eu (4~1) stable; urgency=medium
+rtl8188eu (5) stable; urgency=medium
+
+  * Merge upstream changes. 
+
+ -- David Lechner <david@lechnology.com>  Sun, 06 Sep 2015 21:59:07 -0500
+
+rtl8188eu (4) stable; urgency=medium
 
   * Merge upstream changes.
 
