@@ -1,3 +1,9 @@
+rtl8188eu (7) stable; urgency=medium
+
+  * stretch is stable now 
+
+ -- David Lechner <david@lechnology.com>  Tue, 02 Jan 2018 16:40:15 -0600
+
 rtl8188eu (6) testing; urgency=medium
 
   * Targeting stretch
