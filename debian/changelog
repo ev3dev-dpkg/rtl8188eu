@@ -1,3 +1,9 @@
+rtl8188eu (8) stable; urgency=medium
+
+  * Merge upstream changes 
+
+ -- David Lechner <david@lechnology.com>  Sat, 14 Apr 2018 12:43:11 -0500
+
 rtl8188eu (7) stable; urgency=medium
 
   * stretch is stable now 
