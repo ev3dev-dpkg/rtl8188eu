@@ -17,7 +17,7 @@ ccflags-y += -D__CHECK_ENDIAN__
 
 CONFIG_AUTOCFG_CP = n
 
-CONFIG_RTL8188E = y
+CONFIG_RTL8188EU = m
 
 CONFIG_USB_HCI = y
 
@@ -93,7 +93,7 @@ ifeq ($(CONFIG_WOWLAN), y)
 EXTRA_CFLAGS += -DCONFIG_WOWLAN
 endif
 
-SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ | sed -e s/ppc/powerpc/ | sed -e s/armv.l/arm/)
+SUBARCH := $(shell uname -m | sed -e "s/i.86/i386/; s/ppc/powerpc/; s/armv.l/arm/; s/aarch64/arm64/;")
 
 ARCH ?= $(SUBARCH)
 CROSS_COMPILE ?=
@@ -141,6 +141,10 @@ else
 
 export CONFIG_RTL8188EU = m
 
+obj-$(CONFIG_RTL8188EU) := 8188eu.o
+
+endif
+
 all: modules
 
 modules:
@@ -156,7 +160,7 @@ install:
 	cp rtl8188eufw.bin /lib/firmware/.
 	/sbin/depmod -a ${KVER}
 	mkdir -p /lib/firmware/rtlwifi
-	cp -n rtl8188eufw.bin /lib/firmware/rtlwifi/.
+	cp rtl8188eufw.bin /lib/firmware/rtlwifi/.
 
 uninstall:
 	rm -f $(MODDESTDIR)/8188eu.ko
@@ -179,5 +183,4 @@ clean: $(clean_more)
 	cd core ; rm -fr *.mod.c *.mod *.o .*.cmd *.ko
 	cd hal ; rm -fr *.mod.c *.mod *.o .*.cmd *.ko
 	cd os_dep ; rm -fr *.mod.c *.mod *.o .*.cmd *.ko
-endif
 

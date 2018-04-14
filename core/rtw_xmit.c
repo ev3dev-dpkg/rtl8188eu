@@ -955,7 +955,9 @@ s32 rtw_txframes_sta_ac_pending(struct adapter *padapter, struct pkt_attrib *pat
 		break;
 	}
 
-	return ptxservq->qcnt;
+	if (ptxservq)
+		return ptxservq->qcnt;
+	return 0;
 }
 
 /*
@@ -1001,6 +1003,9 @@ s32 rtw_xmitframe_coalesce(struct adapter *padapter, struct sk_buff *pkt, struct
 	u8 *pbuf_start;
 	s32 bmcst = IS_MCAST(pattrib->ra);
 	s32 res = _SUCCESS;
+
+	if (!pkt)
+		return _FAIL;
 
 	psta = rtw_get_stainfo(&padapter->stapriv, pattrib->ra);
 
